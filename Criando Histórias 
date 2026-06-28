@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criando Histórias</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #0b0c14;
+    color: white;
+}
+
+.screen { display:none; padding:16px; }
+.active { display:block; }
+
+/* SPLASH */
+#splash {
+    height: 100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    background: radial-gradient(circle at top, #6a00ff, #0b0c14 70%);
+}
+
+h1 { font-size: 34px; }
+
+.btn {
+    width: 100%;
+    padding: 14px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 14px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.primary {
+    background: linear-gradient(90deg, #00ffcc, #00c2ff);
+    color: black;
+}
+
+.danger {
+    background: transparent;
+    border: 1px solid #ff4d4d;
+    color: #ff4d4d;
+}
+
+/* HEADER */
+.header {
+    text-align:center;
+    padding:12px;
+    background: rgba(255,255,255,0.05);
+    border-radius:12px;
+    margin-bottom:10px;
+}
+
+/* CARDS */
+.card {
+    background: rgba(255,255,255,0.05);
+    padding:12px;
+    border-radius:12px;
+    margin-top:10px;
+}
+
+/* INPUTS */
+input, textarea {
+    width:100%;
+    padding:12px;
+    margin-top:8px;
+    margin-bottom:8px;
+    border:none;
+    border-radius:10px;
+    background: rgba(255,255,255,0.06);
+    color:white;
+}
+
+/* NAV */
+.nav {
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    display:flex;
+    background:#111;
+}
+
+.nav button {
+    flex:1;
+    padding:14px;
+    background:none;
+    border:none;
+    color:white;
+}
+
+/* PERSONAGENS */
+.character {
+    border-left:3px solid #00ffcc;
+    padding:10px;
+    margin-top:8px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- SPLASH -->
+<div id="splash" class="screen active">
+    <h1>📖 Criando Histórias</h1>
+    <p>Crie suas histórias offline</p>
+    <button class="btn primary" onclick="go('home')">Começar</button>
+</div>
+
+<!-- HOME -->
+<div id="home" class="screen">
+
+    <div class="header">📚 Suas Histórias</div>
+
+    <button class="btn primary" onclick="go('editor')">+ Nova História</button>
+
+    <div id="storyList"></div>
+</div>
+
+<!-- EDITOR -->
+<div id="editor" class="screen">
+
+    <div class="header">✏️ Editor de História</div>
+
+    <!-- 👤 PERSONAGENS (ACIMA DO EDITOR) -->
+    <div class="card">
+        <h3>👤 Cadastro de Personagens</h3>
+
+        <input id="cName" placeholder="Nome">
+        <input id="cRole" placeholder="Papel">
+        <textarea id="cDesc" placeholder="Descrição"></textarea>
+        <textarea id="cSkills" placeholder="Habilidades"></textarea>
+
+        <button class="btn primary" onclick="addChar()">Adicionar Personagem</button>
+
+        <div id="chars"></div>
+    </div>
+
+    <!-- 📖 HISTÓRIA -->
+    <div class="card">
+        <h3>📖 História</h3>
+
+        <input id="title" placeholder="Título da história">
+        <textarea id="text" placeholder="Escreva o episódio"></textarea>
+
+        <button class="btn primary" onclick="addEpisode()">▶ Próximo Episódio</button>
+        <button class="btn primary" onclick="saveStory()">💾 Salvar História</button>
+
+        <div id="chapters"></div>
+    </div>
+
+</div>
+
+<!-- NAV -->
+<div class="nav">
+    <button onclick="go('home')">🏠</button>
+    <button onclick="go('editor')">✏️</button>
+</div>
+
+<script>
+
+let stories = JSON.parse(localStorage.getItem("stories")) || [];
+let chapters = [];
+let chars = [];
+let editing = null;
+
+/* NAV */
+function go(screen) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(screen).classList.add("active");
+
+    if (screen === "home") renderStories();
+}
+
+/* HOME */
+function renderStories() {
+    let box = document.getElementById("storyList");
+    box.innerHTML = "";
+
+    stories.forEach(s => {
+        box.innerHTML += `
+            <div class="card">
+                <h3>${s.title}</h3>
+                <small>📚 ${s.chapters.length} capítulos</small>
+                <small>👤 ${s.characters.length} personagens</small>
+
+                <button class="btn primary" onclick="edit(${s.id})">Editar</button>
+                <button class="btn danger" onclick="del(${s.id})">Excluir</button>
+            </div>
+        `;
+    });
+}
+
+/* EPISÓDIOS */
+function addEpisode() {
+    let title = document.getElementById("title").value;
+    let text = document.getElementById("text").value;
+
+    if (!text) return;
+
+    chapters.push({
+        title: title || "Episódio",
+        text
+    });
+
+    document.getElementById("text").value = "";
+    renderChapters();
+}
+
+function renderChapters() {
+    let box = document.getElementById("chapters");
+    box.innerHTML = "";
+
+    chapters.forEach(c => {
+        box.innerHTML += `
+            <div class="card">
+                <strong>${c.title}</strong>
+                <p>${c.text.substring(0,100)}...</p>
+            </div>
+        `;
+    });
+}
+
+/* PERSONAGENS */
+function addChar() {
+    let name = document.getElementById("cName").value;
+    let role = document.getElementById("cRole").value;
+    let desc = document.getElementById("cDesc").value;
+    let skills = document.getElementById("cSkills").value;
+
+    if (!name) return;
+
+    chars.push({ name, role, desc, skills });
+
+    renderChars();
+}
+
+function renderChars() {
+    let box = document.getElementById("chars");
+    box.innerHTML = "";
+
+    chars.forEach(c => {
+        box.innerHTML += `
+            <div class="character">
+                <strong>${c.name}</strong><br>
+                <small>${c.role}</small><br>
+                <small>${c.desc}</small><br>
+                <small>⚔️ ${c.skills}</small>
+            </div>
+        `;
+    });
+}
+
+/* SALVAR */
+function saveStory() {
+    let title = document.getElementById("title").value;
+
+    if (!title) return alert("Digite um título!");
+
+    stories.push({
+        id: Date.now(),
+        title,
+        chapters: [...chapters],
+        characters: [...chars]
+    });
+
+    localStorage.setItem("stories", JSON.stringify(stories));
+
+    chapters = [];
+    chars = [];
+
+    go("home");
+}
+
+/* DELETE */
+function del(id) {
+    stories = stories.filter(s => s.id !== id);
+    localStorage.setItem("stories", JSON.stringify(stories));
+    renderStories();
+}
+
+/* EDIT */
+function edit(id) {
+    let s = stories.find(x => x.id === id);
+
+    chapters = s.chapters;
+    chars = s.characters;
+    editing = id;
+
+    document.getElementById("title").value = s.title;
+
+    renderChapters();
+    renderChars();
+
+    go("editor");
+}
+
+</script>
+
+</body>
+</html>
